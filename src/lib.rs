@@ -1,4 +1,5 @@
-use std::fs;
+use std::fs::{self, File};
+use std::io::{Read, BufReader};
 use std::path::Path;
 
 pub fn diff(a_path: &Path, b_path: &Path) {
@@ -21,7 +22,7 @@ pub fn diff(a_path: &Path, b_path: &Path) {
         } else {
             if path.is_file() {
                 if !modified_times_match(&peek.unwrap().path(), &path)
-                    && !hashes_match(&peek.unwrap().path(), &path)
+                    && !has_same_contents(&peek.unwrap().path(), &path)
                 {
                     println!(
                         "!= {}\n   {}",
@@ -41,11 +42,28 @@ fn types_match(a: &Path, b: &Path) -> bool {
     a.is_file() == b.is_file() || a.is_dir() == b.is_dir()
 }
 
-fn hashes_match(a_path: &Path, b_path: &Path) -> bool {
-    let a_content = fs::read(&a_path).expect(&format!("{}", a_path.display()));
-    let b_content = fs::read(&b_path).expect(&format!("{}", b_path.display()));
+fn has_same_contents(a: &Path, b: &Path) -> bool {
+    let mut a_reader = match File::open(a) {
+        Ok(f) => BufReader::new(f),
+        Err(err) => panic!("{}: {}", a.display(), err),
+    };
+    let mut b_reader = match File::open(b) {
+        Ok(f) => BufReader::new(f),
+        Err(err) => panic!("{}: {}", b.display(), err),
+    };
+    let mut a_buff = [0; 1024];
+    let mut b_buff = [0; 1024];
 
-    a_content == b_content
+    loop {
+        let a_bytes_read = a_reader.read(&mut a_buff).unwrap();
+        let b_bytes_read = b_reader.read(&mut b_buff).unwrap();
+
+        if a_bytes_read != b_bytes_read || &a_buff[..a_bytes_read] != &b_buff[..b_bytes_read] {
+            break false;
+        } else if a_bytes_read == 0 {
+            break true;
+        }
+    }
 }
 
 fn modified_times_match(a_path: &Path, b_path: &Path) -> bool {

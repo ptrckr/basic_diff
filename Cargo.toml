@@ -1,5 +1,5 @@
 [package]
 name = "basic_diff"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["ptrckr <m@pr.link>"]
 edition = "2018"
