@@ -1,5 +1,5 @@
 use std::fs::{self, File};
-use std::io::{Read, BufReader};
+use std::io::{BufReader, Read};
 use std::path::Path;
 
 pub fn diff(a_path: &Path, b_path: &Path) {
@@ -76,25 +76,28 @@ fn modified_times_match(a_path: &Path, b_path: &Path) -> bool {
     false
 }
 
-fn remove_mac_files(entry: &fs::DirEntry) -> bool {
-    let path = entry.path();
+fn remove_system_files(entry: &fs::DirEntry) -> bool {
     let name = entry.file_name();
+    let lookup = if cfg!(target_os = "macos") {
+        vec![
+            ".DS_Store",
+            ".DocumentRevisions-V100",
+            ".Spotlight-V100",
+            ".TemporaryItems",
+            ".Trashes",
+            ".VolumeIcon.icns",
+            ".com.apple.timemachine.donotpresent",
+            ".com.apple.timemachine.supported",
+            ".fseventsd",
+            ".iTunes Preferences.plist",
+        ]
+    } else {
+        vec![]
+    };
 
-    match path.is_file() {
-        true => {
-            !(name == ".DS_Store"
-                || name == ".iTunes Preferences.plist"
-                || name == ".com.apple.timemachine.donotpresent"
-                || name == ".com.apple.timemachine.supported"
-                || name == ".VolumeIcon.icns")
-        }
-        false => {
-            !(name == ".Spotlight-V100"
-                || name == ".TemporaryItems"
-                || name == ".Trashes"
-                || name == ".fseventsd"
-                || name == ".DocumentRevisions-V100")
-        }
+    match lookup.iter().position(|&x| x == name) {
+        Some(_) => false,
+        None => true,
     }
 }
 
@@ -105,7 +108,7 @@ fn get_files(a_path: &Path, b_path: &Path) -> Vec<fs::DirEntry> {
     let mut files = a_files
         .chain(b_files)
         .map(|entry| entry.unwrap())
-        .filter(remove_mac_files)
+        .filter(remove_system_files)
         .collect::<Vec<_>>();
 
     files.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
