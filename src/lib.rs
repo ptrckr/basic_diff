@@ -15,20 +15,22 @@ pub fn diff(a_path: &Path, b_path: &Path) {
             || !types_match(&peek.unwrap().path(), &path)
         {
             println!(
-                "{} {}",
-                if path.starts_with(a_path) { "<<" } else { ">>" },
-                path.display()
+                "{color}{dir} {path}{reset}",
+                color = if path.starts_with(a_path) {
+                    "\x1B[32m"
+                } else {
+                    "\x1B[31m"
+                },
+                dir = if path.starts_with(a_path) { "A" } else { "B" },
+                path = path.display(),
+                reset = "\x1B[0m"
             );
         } else {
             if path.is_file() {
                 if !modified_times_match(&peek.unwrap().path(), &path)
                     && !has_same_contents(&peek.unwrap().path(), &path)
                 {
-                    println!(
-                        "!= {}\n   {}",
-                        path.display(),
-                        peek.unwrap().path().display()
-                    );
+                    println!("! {}\n= {}", path.display(), peek.unwrap().path().display());
                 }
             } else if path.is_dir() {
                 diff(&path, &peek.unwrap().path());
